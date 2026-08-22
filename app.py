@@ -1,19 +1,14 @@
 import os
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 
-# Initialize Flask app
 app = Flask(__name__)
-
-# Configure SQLite database file stored in instance folder
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dashboard.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize ORM extension
 db = SQLAlchemy(app)
 
 
-# Define Database Model
 class Service(db.Model):
     __tablename__ = 'services'
 
@@ -25,7 +20,6 @@ class Service(db.Model):
     is_online = db.Column(db.Boolean, default=True)
 
     def to_dict(self):
-        """Convert database record to a dictionary for API JSON responses."""
         return {
             'id': self.id,
             'name': self.name,
@@ -36,16 +30,74 @@ class Service(db.Model):
         }
 
 
-# Quick test route
-@app.route('/')
-def home():
-    return {"message": "Homelab Dashboard API is running"}
+# --- API ENDPOINTS ---
+
+# GET all services
+@app.route('/api/services', methods=['GET'])
+def get_services():
+    services = Service.query.all()
+    return jsonify([service.to_dict() for service in services]), 200
+
+
+# GET a single service by ID
+@app.route('/api/services/<int:service_id>', methods=['GET'])
+def get_service(service_id):
+    service = Service.query.get_or_404(service_id)
+    return jsonify(service.to_dict()), 200
+
+
+# POST create a new service
+@app.route('/api/services', methods=['POST'])
+def create_service():
+    data = request.get_json()
+
+    # Basic input validation
+    if not data or not data.get('name') or not data.get('url'):
+        return jsonify({'error': 'Name and URL are required fields'}), 400
+
+    new_service = Service(
+        name=data['name'],
+        url=data['url'],
+        icon=data.get('icon', 'server'),
+        category=data.get('category', 'General'),
+        is_online=data.get('is_online', True)
+    )
+
+    db.session.add(new_service)
+    db.session.commit()
+
+    return jsonify(new_service.to_dict()), 201
+
+
+# PUT update an existing service
+@app.route('/api/services/<int:service_id>', methods=['PUT'])
+def update_service(service_id):
+    service = Service.query.get_or_404(service_id)
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'No data provided for update'}), 400
+
+    service.name = data.get('name', service.name)
+    service.url = data.get('url', service.url)
+    service.icon = data.get('icon', service.icon)
+    service.category = data.get('category', service.category)
+    service.is_online = data.get('is_online', service.is_online)
+
+    db.session.commit()
+    return jsonify(service.to_dict()), 200
+
+
+# DELETE a service
+@app.route('/api/services/<int:service_id>', methods=['DELETE'])
+def delete_service(service_id):
+    service = Service.query.get_or_404(service_id)
+    db.session.delete(service)
+    db.session.commit()
+    return jsonify({'message': f'Service {service_id} deleted successfully'}), 200
 
 
 if __name__ == '__main__':
-    # Automatically create database tables inside app context if they don't exist
     with app.app_context():
         db.create_all()
-        print("Database tables created successfully!")
-
     app.run(debug=True, port=5000)
