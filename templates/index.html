@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Homelab Dashboard</title>
+  <style>
+    :root {
+      --bg: #121214;
+      --card-bg: #1e1e24;
+      --accent: #4f46e5;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+    
+    /* Form Styles */
+    .form-container {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    input {
+      background: #2a2a32;
+      border: 1px solid #3f3f46;
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 150px;
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { opacity: 0.9; }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid #2a2a32;
+    }
+    .card h3 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
+    .card .category { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+    .card-actions { display: flex; justify-content: space-between; align-items: center; }
+    .card a {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .card a:hover { text-decoration: underline; }
+    .btn-delete {
+      background: transparent;
+      color: var(--danger);
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Homelab Dashboard</h1>
+
+  <!-- Add Service Form -->
+  <form id="serviceForm" class="form-container">
+    <input type="text" id="name" placeholder="Service Name (e.g. Plex)" required>
+    <input type="url" id="url" placeholder="URL (http://...)" required>
+    <input type="text" id="category" placeholder="Category (e.g. Media)">
+    <button type="submit">Add Service</button>
+  </form>
+
+  <!-- Service Cards Container -->
+  <div id="serviceGrid" class="grid"></div>
+
+  <script>
+    const API_URL = '/api/services';
+
+    // Fetch and render all services from API
+    async function fetchServices() {
+      const res = await fetch(API_URL);
+      const services = await res.json();
+      
+      const grid = document.getElementById('serviceGrid');
+      grid.innerHTML = '';
+
+      services.forEach(service => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div>
+            <h3>${service.name}</h3>
+            <div class="category">${service.category}</div>
+          </div>
+          <div class="card-actions">
+            <a href="${service.url}" target="_blank" rel="noopener">Open Link ↗</a>
+            <button class="btn-delete" onclick="deleteService(${service.id})">Delete</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Handle Form Submit (POST request)
+    document.getElementById('serviceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('name').value;
+      const url = document.getElementById('url').value;
+      const category = document.getElementById('category').value || 'General';
+
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, url, category })
+      });
+
+      document.getElementById('serviceForm').reset();
+      fetchServices();
+    });
+
+    // Handle Delete (DELETE request)
+    async function deleteService(id) {
+      if (!confirm('Are you sure you want to delete this service?')) return;
+      
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      fetchServices();
+    }
+
+    // Initial load
+    fetchServices();
+  </script>
+</body>
+</html>

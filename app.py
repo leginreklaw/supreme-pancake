@@ -1,8 +1,9 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
+# Tell Flask to find HTML templates in the 'templates' folder
+app = Flask(__name__, template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dashboard.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -30,30 +31,30 @@ class Service(db.Model):
         }
 
 
-# --- API ENDPOINTS ---
+# --- FRONTEND ROUTE ---
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# GET all services
+
+# --- REST API ROUTES ---
 @app.route('/api/services', methods=['GET'])
 def get_services():
     services = Service.query.all()
     return jsonify([service.to_dict() for service in services]), 200
 
 
-# GET a single service by ID
 @app.route('/api/services/<int:service_id>', methods=['GET'])
 def get_service(service_id):
-    service = Service.query.get_or_404(service_id)
+    service = Service.query.get_or_404(service_id, description="Service not found")
     return jsonify(service.to_dict()), 200
 
 
-# POST create a new service
 @app.route('/api/services', methods=['POST'])
 def create_service():
     data = request.get_json()
-
-    # Basic input validation
     if not data or not data.get('name') or not data.get('url'):
-        return jsonify({'error': 'Name and URL are required fields'}), 400
+        return jsonify({'error': 'Missing required fields'}), 400
 
     new_service = Service(
         name=data['name'],
@@ -65,18 +66,13 @@ def create_service():
 
     db.session.add(new_service)
     db.session.commit()
-
     return jsonify(new_service.to_dict()), 201
 
 
-# PUT update an existing service
 @app.route('/api/services/<int:service_id>', methods=['PUT'])
 def update_service(service_id):
     service = Service.query.get_or_404(service_id)
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'error': 'No data provided for update'}), 400
+    data = request.get_json() or {}
 
     service.name = data.get('name', service.name)
     service.url = data.get('url', service.url)
@@ -88,7 +84,6 @@ def update_service(service_id):
     return jsonify(service.to_dict()), 200
 
 
-# DELETE a service
 @app.route('/api/services/<int:service_id>', methods=['DELETE'])
 def delete_service(service_id):
     service = Service.query.get_or_404(service_id)
