@@ -16,4 +16,4 @@ EXPOSE 5000
 
 # Run with Gunicorn WSGI server for production performance
 # Note: Add gunicorn to requirements.txt if using production server
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app:app"]
