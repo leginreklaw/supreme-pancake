@@ -1,5 +1,5 @@
-import os
-from flask import Flask, request, jsonify, render_template
+import os, json
+from flask import Flask, request, jsonify, render_template, Response
 from flask_sqlalchemy import SQLAlchemy
 
 # Tell Flask to find HTML templates in the 'templates' folder
@@ -30,12 +30,48 @@ class Service(db.Model):
             'is_online': self.is_online
         }
 
+class Setting(db.Model):
+    __tablename__ = 'settings'
 
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=True)
+
+    def to_dict(self):
+        return {'key': self.key, 'value': self.value}
+    
 # --- FRONTEND ROUTE ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# --- SETTINGS PAGE ROUTE ---
+@app.route('/settings')
+def settings_page():
+    return render_template('settings.html')
+
+# --- EXPORT API ROUTE ---
+@app.route('/api/export', methods=['GET'])
+def export_data():
+    services = Service.query.all()
+    settings = Setting.query.all()
+
+    # Structure data payload
+    backup_data = {
+        "version": "1.0",
+        "services": [s.to_dict() for s in services],
+        "settings": {s.key: s.value for s in settings}
+    }
+
+    # Convert to formatted JSON string
+    json_output = json.dumps(backup_data, indent=2)
+
+    # Return as downloadable attachment header
+    return Response(
+        json_output,
+        mimetype='application/json',
+        headers={'Content-Disposition': 'attachment;filename=dashboard_backup.json'}
+    )
 
 # --- REST API ROUTES ---
 @app.route('/api/services', methods=['GET'])
