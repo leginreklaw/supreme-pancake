@@ -40,8 +40,13 @@ class Setting(db.Model):
     def to_dict(self):
         return {'key': self.key, 'value': self.value}
 
+# Wrap create_all in a try block to handle Gunicorn worker race conditions safely
 with app.app_context():
+    try:
         db.create_all()
+    except Exception as e:
+        # Ignore race condition error if another Gunicorn worker created the tables simultaneously
+        pass
     
 # --- FRONTEND ROUTE ---
 @app.route('/')
