@@ -1,5 +1,5 @@
 import os, json
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 
 # Tell Flask to find HTML templates in the 'templates' folder
@@ -135,6 +135,24 @@ def delete_service(service_id):
     db.session.commit()
     return jsonify({'message': f'Service {service_id} deleted successfully'}), 200
 
+# Route to auto-list all local icons inside /static/icons/
+@app.route('/api/icons', methods=['GET'])
+def get_local_icons():
+    icons_dir = os.path.join(app.root_path, 'static', 'icons')
+    
+    # Create directory if it does not exist yet
+    if not os.path.exists(icons_dir):
+        os.makedirs(icons_dir, exist_ok=True)
+        return jsonify([]), 200
+
+    # Retrieve all PNG, SVG, JPG, and WEBP filenames
+    valid_extensions = ('.png', '.svg', '.jpg', '.jpeg', '.webp')
+    icon_files = [
+        f for f in os.listdir(icons_dir)
+        if f.lower().endswith(valid_extensions)
+    ]
+    
+    return jsonify(sorted(icon_files)), 200
 
 if __name__ == '__main__':
     # Explicitly bind to 0.0.0.0 so Docker can route traffic into the container

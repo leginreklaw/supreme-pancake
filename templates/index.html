@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Homelab Dashboard</title>
+  
+  <!-- FontAwesome fallback icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
   <style>
     :root {
       --bg: #121214;
@@ -13,6 +17,7 @@
       --text-muted: #9ca3af;
       --danger: #ef4444;
     }
+    
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background-color: var(--bg);
@@ -21,8 +26,23 @@
       margin: 0 auto;
       padding: 2rem;
     }
-    h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 { font-size: 2rem; margin: 0; }
     
+    .settings-link {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .settings-link:hover { text-decoration: underline; }
+
     /* Form Styles */
     .form-container {
       background: var(--card-bg);
@@ -32,7 +52,9 @@
       display: flex;
       gap: 0.75rem;
       flex-wrap: wrap;
+      align-items: center;
     }
+
     input {
       background: #2a2a32;
       border: 1px solid #3f3f46;
@@ -42,6 +64,7 @@
       flex: 1;
       min-width: 150px;
     }
+
     button {
       background: var(--accent);
       color: white;
@@ -53,12 +76,28 @@
     }
     button:hover { opacity: 0.9; }
 
+    /* Secondary Trigger Button */
+    .btn-secondary {
+      background: #2a2a32;
+      border: 1px solid #3f3f46;
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: normal;
+    }
+    .btn-secondary:hover { background: #34343d; opacity: 1; }
+
     /* Grid Layout */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 1rem;
     }
+
     .card {
       background: var(--card-bg);
       border-radius: 8px;
@@ -67,46 +106,284 @@
       flex-direction: column;
       justify-content: space-between;
       border: 1px solid #2a2a32;
+      min-height: 110px;
     }
-    .card h3 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
+
+    .card h3 { 
+      margin: 0 0 0.25rem 0; 
+      font-size: 1.2rem; 
+      display: flex;
+      align-items: center;
+    }
+
     .card .category { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
     .card-actions { display: flex; justify-content: space-between; align-items: center; }
+    
     .card a {
       color: #818cf8;
       text-decoration: none;
       font-weight: 500;
     }
     .card a:hover { text-decoration: underline; }
+
     .btn-delete {
       background: transparent;
       color: var(--danger);
       padding: 0.2rem 0.5rem;
       font-size: 0.8rem;
     }
+    .btn-delete:hover { background: rgba(239, 68, 68, 0.1); }
+ 
+    /* Card Icon Styling */
+    .card-icon {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    /* Modal Grid Options for Local Images */
+    .icon-option img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .modal-close {
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .modal-close:hover { color: var(--text); }
+
+    #iconSearch {
+      width: 100%;
+      margin-bottom: 1rem;
+      box-sizing: border-box;
+    }
+
+    /* Icon Grid Layout */
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+      gap: 0.75rem;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+
+    .icon-option {
+      background: #2a2a32;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      padding: 0.75rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .icon-option:hover {
+      border-color: var(--accent);
+      background: #34343d;
+    }
+
+    .icon-option span { 
+      font-size: 0.65rem; 
+      color: var(--text-muted); 
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
 
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-  <h1>Homelab Dashboard</h1>
-  <a href="/settings" style="color: #818cf8; text-decoration: none;">⚙ Settings</a>
-  </div>
+  <header>
+    <h1>Homelab Dashboard</h1>
+    <a href="/settings" class="settings-link">⚙ Settings</a>
+  </header>
 
   <!-- Add Service Form -->
   <form id="serviceForm" class="form-container">
     <input type="text" id="name" placeholder="Service Name (e.g. Plex)" required>
     <input type="url" id="url" placeholder="URL (http://...)" required>
     <input type="text" id="category" placeholder="Category (e.g. Media)">
+    
+    <!-- Hidden input stores filename/slug; button launches picker -->
+    <input type="hidden" id="icon" value="server">
+    <button type="button" id="selectIconBtn" class="btn-secondary">
+      <span id="selectedIconPreview"><i class="fa-solid fa-server"></i></span> Select Icon
+    </button>
+    
     <button type="submit">Add Service</button>
   </form>
 
-  <!-- Service Cards Container -->
+  <!-- Service Cards Grid -->
   <div id="serviceGrid" class="grid"></div>
+
+  <!-- Icon Selection Modal -->
+  <div id="iconModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="margin:0;">Select an Icon</h3>
+        <span class="modal-close" onclick="closeIconModal()">&times;</span>
+      </div>
+      <input type="text" id="iconSearch" placeholder="Search icons..." onkeyup="filterIcons()">
+      <div id="iconGrid" class="icon-grid"></div>
+    </div>
+  </div>
 
   <script>
     const API_URL = '/api/services';
+    const STATIC_ICON_PATH = '/static/icons/';
+    
+    let LOCAL_ICONS = [];
+    let FILTERED_ICONS = [];
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 60;
+    let searchTimeout = null;
 
-    // Fetch and render all services from API
+    // Helper to render image tags or fallbacks
+    function renderIconHtml(iconFilename) {
+      if (!iconFilename || iconFilename === 'server') {
+        return '<i class="fa-solid fa-server" style="margin-right: 8px;"></i>';
+      }
+      return `<img src="${STATIC_ICON_PATH}${iconFilename}" class="card-icon" alt="icon">`;
+    }
+
+    // Fetch local icons from backend and cache in memory
+    async function loadLocalIcons() {
+      if (LOCAL_ICONS.length > 0) return;
+      try {
+        const res = await fetch('/api/icons');
+        LOCAL_ICONS = await res.json();
+        FILTERED_ICONS = [...LOCAL_ICONS];
+      } catch (err) {
+        console.error('Failed to fetch local icons:', err);
+        LOCAL_ICONS = [];
+        FILTERED_ICONS = [];
+      }
+    }
+
+    // Modal Controller
+    document.getElementById('selectIconBtn').addEventListener('click', async () => {
+      document.getElementById('iconSearch').value = '';
+      document.getElementById('iconGrid').innerHTML = '<div style="padding:1rem;">Loading icons...</div>';
+      document.getElementById('iconModal').style.display = 'flex';
+      
+      await loadLocalIcons();
+      FILTERED_ICONS = [...LOCAL_ICONS];
+      currentPage = 1;
+      renderIconGrid();
+    });
+
+    function closeIconModal() {
+      document.getElementById('iconModal').style.display = 'none';
+    }
+
+    // Render paginated icons
+    function renderIconGrid() {
+      const grid = document.getElementById('iconGrid');
+      grid.innerHTML = '';
+
+      if (!FILTERED_ICONS || FILTERED_ICONS.length === 0) {
+        grid.innerHTML = '<div style="padding:1rem; color:var(--text-muted); grid-column: 1/-1;">No matching icons found.</div>';
+        return;
+      }
+
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const pageIcons = FILTERED_ICONS.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+      pageIcons.forEach(filename => {
+        const cleanTitle = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+
+        const div = document.createElement('div');
+        div.className = 'icon-option';
+        div.innerHTML = `
+          <img src="${STATIC_ICON_PATH}${filename}" alt="${cleanTitle}" loading="lazy">
+          <span>${cleanTitle}</span>
+        `;
+        
+        div.onclick = () => {
+          document.getElementById('icon').value = filename;
+          document.getElementById('selectedIconPreview').innerHTML = 
+            `<img src="${STATIC_ICON_PATH}${filename}" style="width:18px; height:18px; object-fit:contain; vertical-align:middle;">`;
+          closeIconModal();
+        };
+        
+        grid.appendChild(div);
+      });
+
+      // Pagination controls
+      if (FILTERED_ICONS.length > ITEMS_PER_PAGE) {
+        const totalPages = Math.ceil(FILTERED_ICONS.length / ITEMS_PER_PAGE);
+        const nav = document.createElement('div');
+        nav.style.cssText = 'grid-column: 1/-1; display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #2a2a32;';
+        
+        nav.innerHTML = `
+          <button type="button" class="btn-secondary" ${currentPage === 1 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} id="prevPageBtn">← Prev</button>
+          <span style="font-size:0.75rem; color:var(--text-muted);">${currentPage} / ${totalPages} (${FILTERED_ICONS.length})</span>
+          <button type="button" class="btn-secondary" ${currentPage === totalPages ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} id="nextPageBtn">Next →</button>
+        `;
+        
+        grid.appendChild(nav);
+
+        document.getElementById('prevPageBtn')?.addEventListener('click', () => {
+          if (currentPage > 1) { currentPage--; renderIconGrid(); }
+        });
+        document.getElementById('nextPageBtn')?.addEventListener('click', () => {
+          if (currentPage < totalPages) { currentPage++; renderIconGrid(); }
+        });
+      }
+    }
+
+    // Debounced search
+    function filterIcons() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const query = document.getElementById('iconSearch').value.toLowerCase().trim();
+        FILTERED_ICONS = LOCAL_ICONS.filter(filename => filename.toLowerCase().includes(query));
+        currentPage = 1;
+        renderIconGrid();
+      }, 150);
+    }
+
+    // Fetch and render services
     async function fetchServices() {
       const res = await fetch(API_URL);
       const services = await res.json();
@@ -117,9 +394,14 @@
       services.forEach(service => {
         const card = document.createElement('div');
         card.className = 'card';
+        const iconHtml = renderIconHtml(service.icon);
+
         card.innerHTML = `
           <div>
-            <h3>${service.name}</h3>
+            <h3>
+              ${iconHtml}
+              ${service.name}
+            </h3>
             <div class="category">${service.category}</div>
           </div>
           <div class="card-actions">
@@ -131,25 +413,29 @@
       });
     }
 
-    // Handle Form Submit (POST request)
+    // Handle Form Submission (POST)
     document.getElementById('serviceForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const name = document.getElementById('name').value;
       const url = document.getElementById('url').value;
       const category = document.getElementById('category').value || 'General';
+      const icon = document.getElementById('icon').value || 'server';
 
       await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, url, category })
+        body: JSON.stringify({ name, url, category, icon })
       });
 
       document.getElementById('serviceForm').reset();
+      document.getElementById('icon').value = 'server';
+      document.getElementById('selectedIconPreview').innerHTML = '<i class="fa-solid fa-server"></i>';
+
       fetchServices();
     });
 
-    // Handle Delete (DELETE request)
+    // Handle Service Deletion (DELETE)
     async function deleteService(id) {
       if (!confirm('Are you sure you want to delete this service?')) return;
       
@@ -157,7 +443,7 @@
       fetchServices();
     }
 
-    // Initial load
+    // Initial page load
     fetchServices();
   </script>
 </body>
