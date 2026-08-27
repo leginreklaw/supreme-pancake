@@ -6,17 +6,72 @@
   <title>Homelab Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    :root { --bg: #121214; --card-bg: #1e1e24; --text: #f3f4f6; --text-muted: #9ca3af; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); max-width: 100%; margin: 0 auto; padding: 2rem; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    :root { 
+      --bg: #121214; 
+      --card-bg: #1e1e24; 
+      --text: #f3f4f6; 
+      --text-muted: #9ca3af; 
+      --accent: #818cf8;
+    }
+    
+    body { 
+      font-family: system-ui, sans-serif; 
+      background: var(--bg); 
+      color: var(--text); 
+      max-width: 100%; 
+      margin: 0 auto; 
+      padding: 2rem; 
+    }
+
+    header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 2rem; 
+    }
+
     h1 { margin: 0; font-size: 2rem; }
-    .settings-link { color: #818cf8; text-decoration: none; font-weight: 500; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-    .card { background: var(--card-bg); border-radius: 8px; padding: 1.25rem; border: 1px solid #2a2a32; display: flex; flex-direction: column; justify-content: space-between; }
-    .card h3 { margin: 0 0 0.5rem 0; font-size: 1.2rem; display: flex; align-items: center; }
+    .settings-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .settings-link:hover { text-decoration: underline; }
+
+    /* Responsive Grid Layout */
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+      gap: 1rem; 
+    }
+
+    /* Entire Card Styled as a Clickable Target */
+    .card { 
+      background: var(--card-bg); 
+      border-radius: 8px; 
+      padding: 1.25rem; 
+      border: 1px solid #2a2a32; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between; 
+      text-decoration: none; 
+      color: var(--text); 
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+    }
+
+    /* Interactive Hover State */
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h3 { 
+      margin: 0 0 0.5rem 0; 
+      font-size: 1.2rem; 
+      display: flex; 
+      align-items: center; 
+    }
+
     .card .category { color: var(--text-muted); font-size: 0.85rem; }
     .card-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 10px; }
-    .card a { color: #818cf8; text-decoration: none; font-weight: 500; align-self: flex-start; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -32,28 +87,40 @@
     const STATIC_ICON_PATH = '/static/icons/';
 
     function renderIconHtml(iconFilename) {
-      if (!iconFilename || iconFilename === 'server') return '<i class="fa-solid fa-server" style="margin-right: 10px;"></i>';
+      if (!iconFilename || iconFilename === 'server') {
+        return '<i class="fa-solid fa-server" style="margin-right: 10px;"></i>';
+      }
       return `<img src="${STATIC_ICON_PATH}${iconFilename}" class="card-icon" alt="icon">`;
     }
 
     async function fetchServices() {
-      const res = await fetch(API_URL);
-      const services = await res.json();
-      const grid = document.getElementById('serviceGrid');
-      grid.innerHTML = '';
+      try {
+        const res = await fetch(API_URL);
+        const services = await res.json();
+        const grid = document.getElementById('serviceGrid');
+        grid.innerHTML = '';
 
-      services.forEach(service => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div>
-            <h3>${renderIconHtml(service.icon)} ${service.name}</h3>
-            <div class="category">${service.category}</div>
-          </div>
-          <a href="${service.url}" target="_blank" rel="noopener">Open Link ↗</a>
-        `;
-        grid.appendChild(card);
-      });
+        services.forEach(service => {
+          // Render the whole card as an anchor link
+          const card = document.createElement('a');
+          card.className = 'card';
+          card.href = service.url;
+          card.target = '_blank';
+          card.rel = 'noopener noreferrer';
+
+          const iconHtml = renderIconHtml(service.icon);
+
+          card.innerHTML = `
+            <div>
+              <h3>${iconHtml} ${service.name}</h3>
+              <div class="category">${service.category}</div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Failed to load services:', err);
+      }
     }
 
     fetchServices();
