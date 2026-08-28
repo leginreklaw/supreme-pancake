@@ -1,8 +1,8 @@
-import os, json
-from flask import Flask, request, jsonify, render_template, Response, send_from_directory
+import os
+import json
+from flask import Flask, request, jsonify, render_template, Response
 from flask_sqlalchemy import SQLAlchemy
 
-# Tell Flask to find HTML templates in the 'templates' folder
 app = Flask(__name__, template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dashboard.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -30,6 +30,7 @@ class Service(db.Model):
             'is_online': self.is_online
         }
 
+
 class Setting(db.Model):
     __tablename__ = 'settings'
 
@@ -40,48 +41,68 @@ class Setting(db.Model):
     def to_dict(self):
         return {'key': self.key, 'value': self.value}
 
-# Wrap create_all in a try block to handle Gunicorn worker race conditions safely
+
 with app.app_context():
     try:
         db.create_all()
-    except Exception as e:
-        # Ignore race condition error if another Gunicorn worker created the tables simultaneously
+    except Exception:
         pass
-    
-# --- FRONTEND ROUTE ---
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# --- SETTINGS PAGE ROUTE ---
+
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
 
-# --- EXPORT API ROUTE ---
+
 @app.route('/api/export', methods=['GET'])
 def export_data():
     services = Service.query.all()
     settings = Setting.query.all()
 
-    # Structure data payload
     backup_data = {
         "version": "1.0",
         "services": [s.to_dict() for s in services],
         "settings": {s.key: s.value for s in settings}
     }
 
-    # Convert to formatted JSON string
     json_output = json.dumps(backup_data, indent=2)
-
-    # Return as downloadable attachment header
     return Response(
         json_output,
         mimetype='application/json',
         headers={'Content-Disposition': 'attachment;filename=dashboard_backup.json'}
     )
 
-# --- REST API ROUTES ---
+
+@app.route('/api/import', methods=['POST'])
+def import_data():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    try:
+        data = json.load(file)
+        if 'services' in data:
+            Service.query.delete()
+            for s in data['services']:
+                db.session.add(Service(
+                    name=s['name'],
+                    url=s['url'],
+                    icon=s.get('icon', 'server'),
+                    category=s.get('category', 'General'),
+                    is_online=s.get('is_online', True)
+                ))
+            db.session.commit()
+        return jsonify({'message': 'Import successfully completed'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+
 @app.route('/api/services', methods=['GET'])
 def get_services():
     services = Service.query.all()
@@ -90,7 +111,9 @@ def get_services():
 
 @app.route('/api/services/<int:service_id>', methods=['GET'])
 def get_service(service_id):
-    service = Service.query.get_or_404(service_id, description="Service not found")
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'Service not found'}), 404
     return jsonify(service.to_dict()), 200
 
 
@@ -115,9 +138,11 @@ def create_service():
 
 @app.route('/api/services/<int:service_id>', methods=['PUT'])
 def update_service(service_id):
-    service = Service.query.get_or_404(service_id)
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'Service not found'}), 404
+        
     data = request.get_json() or {}
-
     service.name = data.get('name', service.name)
     service.url = data.get('url', service.url)
     service.icon = data.get('icon', service.icon)
@@ -130,30 +155,26 @@ def update_service(service_id):
 
 @app.route('/api/services/<int:service_id>', methods=['DELETE'])
 def delete_service(service_id):
-    service = Service.query.get_or_404(service_id)
+    service = db.session.get(Service, service_id)
+    if not service:
+        return jsonify({'error': 'Service not found'}), 404
+        
     db.session.delete(service)
     db.session.commit()
     return jsonify({'message': f'Service {service_id} deleted successfully'}), 200
 
-# Route to auto-list all local icons inside /static/icons/
+
 @app.route('/api/icons', methods=['GET'])
 def get_local_icons():
     icons_dir = os.path.join(app.root_path, 'static', 'icons')
-    
-    # Create directory if it does not exist yet
     if not os.path.exists(icons_dir):
         os.makedirs(icons_dir, exist_ok=True)
         return jsonify([]), 200
 
-    # Retrieve all PNG, SVG, JPG, and WEBP filenames
     valid_extensions = ('.png', '.svg', '.jpg', '.jpeg', '.webp')
-    icon_files = [
-        f for f in os.listdir(icons_dir)
-        if f.lower().endswith(valid_extensions)
-    ]
-    
+    icon_files = [f for f in os.listdir(icons_dir) if f.lower().endswith(valid_extensions)]
     return jsonify(sorted(icon_files)), 200
 
+
 if __name__ == '__main__':
-    # Explicitly bind to 0.0.0.0 so Docker can route traffic into the container
     app.run(host='0.0.0.0', port=5000, debug=False)

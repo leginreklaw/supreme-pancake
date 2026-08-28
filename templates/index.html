@@ -15,10 +15,10 @@
     }
     
     body { 
-      font-family: system-ui, sans-serif; 
+      font-family: system-ui, -apple-system, sans-serif; 
       background: var(--bg); 
       color: var(--text); 
-      max-width: 100%; 
+      max-width: 1200px; 
       margin: 0 auto; 
       padding: 2rem; 
     }
@@ -34,14 +34,20 @@
     .settings-link { color: var(--accent); text-decoration: none; font-weight: 500; }
     .settings-link:hover { text-decoration: underline; }
 
-    /* Responsive Grid Layout */
+    .category-title {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin: 1.5rem 0 0.75rem 0;
+      border-bottom: 1px solid #2a2a32;
+      padding-bottom: 0.5rem;
+    }
+
     .grid { 
       display: grid; 
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
       gap: 1rem; 
     }
 
-    /* Entire Card Styled as a Clickable Target */
     .card { 
       background: var(--card-bg); 
       border-radius: 8px; 
@@ -56,7 +62,6 @@
       cursor: pointer;
     }
 
-    /* Interactive Hover State */
     .card:hover {
       border-color: var(--accent);
       transform: translateY(-2px);
@@ -64,13 +69,12 @@
     }
 
     .card h3 { 
-      margin: 0 0 0.5rem 0; 
-      font-size: 1.2rem; 
+      margin: 0; 
+      font-size: 1.1rem; 
       display: flex; 
       align-items: center; 
     }
 
-    .card .category { color: var(--text-muted); font-size: 0.85rem; }
     .card-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 10px; }
   </style>
 </head>
@@ -80,44 +84,71 @@
     <a href="/settings" class="settings-link">⚙ Settings</a>
   </header>
 
-  <div id="serviceGrid" class="grid"></div>
+  <main id="dashboardContainer"></main>
 
   <script>
     const API_URL = '/api/services';
     const STATIC_ICON_PATH = '/static/icons/';
 
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
     function renderIconHtml(iconFilename) {
       if (!iconFilename || iconFilename === 'server') {
         return '<i class="fa-solid fa-server" style="margin-right: 10px;"></i>';
       }
-      return `<img src="${STATIC_ICON_PATH}${iconFilename}" class="card-icon" alt="icon">`;
+      return `<img src="${STATIC_ICON_PATH}${escapeHtml(iconFilename)}" class="card-icon" alt="">`;
     }
 
     async function fetchServices() {
       try {
         const res = await fetch(API_URL);
         const services = await res.json();
-        const grid = document.getElementById('serviceGrid');
-        grid.innerHTML = '';
+        const container = document.getElementById('dashboardContainer');
+        container.innerHTML = '';
 
-        services.forEach(service => {
-          // Render the whole card as an anchor link
-          const card = document.createElement('a');
-          card.className = 'card';
-          card.href = service.url;
-          card.target = '_blank';
-          card.rel = 'noopener noreferrer';
+        if (services.length === 0) {
+          container.innerHTML = '<p style="color:var(--text-muted)">No services configured yet. <a href="/settings" style="color:var(--accent)">Add your first service</a>.</p>';
+          return;
+        }
 
-          const iconHtml = renderIconHtml(service.icon);
+        // Group services by category
+        const groups = services.reduce((acc, service) => {
+          const cat = service.category || 'General';
+          if (!acc[cat]) acc[cat] = [];
+          acc[cat].push(service);
+          return acc;
+        }, {});
 
-          card.innerHTML = `
-            <div>
-              <h3>${iconHtml} ${service.name}</h3>
-              <div class="category">${service.category}</div>
-            </div>
-          `;
-          grid.appendChild(card);
-        });
+        for (const [category, items] of Object.entries(groups)) {
+          const catHeader = document.createElement('h2');
+          catHeader.className = 'category-title';
+          catHeader.textContent = category;
+          container.appendChild(catHeader);
+
+          const grid = document.createElement('div');
+          grid.className = 'grid';
+
+          items.forEach(service => {
+            const card = document.createElement('a');
+            card.className = 'card';
+            card.href = service.url;
+            card.target = '_blank';
+            card.rel = 'noopener noreferrer';
+
+            card.innerHTML = `
+              <div>
+                <h3>${renderIconHtml(service.icon)} ${escapeHtml(service.name)}</h3>
+              </div>
+            `;
+            grid.appendChild(card);
+          });
+
+          container.appendChild(grid);
+        }
       } catch (err) {
         console.error('Failed to load services:', err);
       }

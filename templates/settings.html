@@ -13,9 +13,8 @@
       --text: #f3f4f6;
       --text-muted: #9ca3af;
       --danger: #ef4444;
-      --success: #10b981;
     }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); max-width: 900px; margin: 0 auto; padding: 2rem; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 900px; margin: 0 auto; padding: 2rem; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
     a.back-link { color: #818cf8; text-decoration: none; }
     
@@ -24,22 +23,21 @@
     
     input { background: #2a2a32; border: 1px solid #3f3f46; color: var(--text); padding: 0.5rem 0.75rem; border-radius: 4px; flex: 1; min-width: 130px; }
     button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600; }
-    .btn-secondary { background: #2a2a32; border: 1px solid #3f3f46; color: var(--text); display: flex; align-items: center; gap: 0.5rem; font-weight: normal; }
-    .btn-delete { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    .btn-secondary { background: #2a2a32; border: 1px solid #3f3f46; color: var(--text); display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-delete { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.35rem 0.65rem; border-radius: 4px; }
     .btn-delete:hover { background: rgba(239, 68, 68, 0.1); }
-    .btn-edit { background: #374151; color: var(--text); margin-right: 0.5rem; }
+    .btn-edit { background: #374151; color: var(--text); margin-right: 0.5rem; padding: 0.35rem 0.65rem; border-radius: 4px; }
 
-    /* Management Table */
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #2a2a32; }
     th { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
     .table-icon { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
 
-    /* Modal Grid */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; }
-    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 0.75rem; overflow-y: auto; }
+    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 0.75rem; overflow-y: auto; max-height: 50vh; padding: 0.5rem 0; }
     .icon-option { background: #2a2a32; border: 1px solid #3f3f46; border-radius: 6px; padding: 0.5rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+    .icon-option:hover { border-color: var(--accent); }
     .icon-option img { width: 32px; height: 32px; object-fit: contain; }
   </style>
 </head>
@@ -50,14 +48,14 @@
     <a href="/" class="back-link">← Back to Dashboard</a>
   </header>
 
-  <!-- Section 1: Add or Edit Service Form -->
+  <!-- Add or Edit Service Form -->
   <div class="section-box">
     <h2 id="formTitle">Add New Service</h2>
     <form id="serviceForm" class="form-row">
       <input type="hidden" id="serviceId">
       <input type="text" id="name" placeholder="Service Name" required>
       <input type="url" id="url" placeholder="URL (http://...)" required>
-      <input type="text" id="category" placeholder="Category">
+      <input type="text" id="category" placeholder="Category (e.g. Media)">
       
       <input type="hidden" id="icon" value="server">
       <button type="button" id="selectIconBtn" class="btn-secondary">
@@ -69,7 +67,7 @@
     </form>
   </div>
 
-  <!-- Section 2: Manage Existing Services Table -->
+  <!-- Manage Existing Services Table -->
   <div class="section-box">
     <h2>Existing Services</h2>
     <table>
@@ -85,14 +83,24 @@
     </table>
   </div>
 
+  <!-- Export and Import Backup -->
+  <div class="section-box">
+    <h2>Backup & Restore</h2>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <a href="/api/export" download class="btn-secondary" style="text-decoration:none; padding: 0.5rem 1rem; border-radius:4px;">📥 Export Backup</a>
+      <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="handleImport(this)">
+      <button type="button" class="btn-secondary" onclick="document.getElementById('importFileInput').click()">📤 Import Backup</button>
+    </div>
+  </div>
+
   <!-- Icon Picker Modal -->
   <div id="iconModal" class="modal-overlay">
     <div class="modal-content">
-      <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
         <h3 style="margin:0;">Select Icon</h3>
-        <span style="cursor:pointer;" onclick="closeIconModal()">&times;</span>
+        <span style="cursor:pointer; font-size:1.5rem;" onclick="closeIconModal()">&times;</span>
       </div>
-      <input type="text" id="iconSearch" placeholder="Search..." onkeyup="filterIcons()" style="margin-bottom:1rem;">
+      <input type="text" id="iconSearch" placeholder="Search..." oninput="filterIcons()" style="margin-bottom:1rem;">
       <div id="iconGrid" class="icon-grid"></div>
     </div>
   </div>
@@ -100,28 +108,33 @@
   <script>
     const API_URL = '/api/services';
     const STATIC_ICON_PATH = '/static/icons/';
-    let LOCAL_ICONS = [], FILTERED_ICONS = [], currentPage = 1, searchTimeout = null;
-    const ITEMS_PER_PAGE = 60;
+    let cachedServices = [];
+    let LOCAL_ICONS = [], FILTERED_ICONS = [];
 
-    // Fetch and render services into table
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
     async function loadServicesTable() {
       const res = await fetch(API_URL);
-      const services = await res.json();
+      cachedServices = await res.json();
       const tbody = document.getElementById('servicesTableBody');
       tbody.innerHTML = '';
 
-      services.forEach(s => {
+      cachedServices.forEach(s => {
         const tr = document.createElement('tr');
         const iconHtml = (s.icon && s.icon !== 'server') 
-          ? `<img src="${STATIC_ICON_PATH}${s.icon}" class="table-icon">` 
+          ? `<img src="${STATIC_ICON_PATH}${escapeHtml(s.icon)}" class="table-icon">` 
           : `<i class="fa-solid fa-server" style="margin-right:8px;"></i>`;
 
         tr.innerHTML = `
-          <td>${iconHtml} <strong>${s.name}</strong></td>
-          <td><a href="${s.url}" target="_blank" style="color:#818cf8;">${s.url}</a></td>
-          <td>${s.category}</td>
+          <td>${iconHtml} <strong>${escapeHtml(s.name)}</strong></td>
+          <td><a href="${escapeHtml(s.url)}" target="_blank" style="color:#818cf8;">${escapeHtml(s.url)}</a></td>
+          <td>${escapeHtml(s.category)}</td>
           <td style="text-align: right;">
-            <button class="btn-edit" onclick='editService(${JSON.stringify(s)})'>Edit</button>
+            <button class="btn-edit" onclick="editServiceById(${s.id})">Edit</button>
             <button class="btn-delete" onclick="deleteService(${s.id})">Delete</button>
           </td>
         `;
@@ -129,8 +142,10 @@
       });
     }
 
-    // Populate form for editing
-    function editService(s) {
+    function editServiceById(id) {
+      const s = cachedServices.find(item => item.id === id);
+      if (!s) return;
+
       document.getElementById('formTitle').innerText = 'Edit Service';
       document.getElementById('serviceId').value = s.id;
       document.getElementById('name').value = s.name;
@@ -140,7 +155,7 @@
 
       const preview = document.getElementById('selectedIconPreview');
       if (s.icon && s.icon !== 'server') {
-        preview.innerHTML = `<img src="${STATIC_ICON_PATH}${s.icon}" style="width:18px; height:18px; object-fit:contain;">`;
+        preview.innerHTML = `<img src="${STATIC_ICON_PATH}${escapeHtml(s.icon)}" style="width:18px; height:18px; object-fit:contain;">`;
       } else {
         preview.innerHTML = `<i class="fa-solid fa-server"></i>`;
       }
@@ -149,7 +164,6 @@
       document.getElementById('cancelBtn').style.display = 'inline-block';
     }
 
-    // Reset Form
     function resetForm() {
       document.getElementById('formTitle').innerText = 'Add New Service';
       document.getElementById('serviceForm').reset();
@@ -160,7 +174,6 @@
       document.getElementById('cancelBtn').style.display = 'none';
     }
 
-    // Handle Form Submit (Both Add and Edit)
     document.getElementById('serviceForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = document.getElementById('serviceId').value;
@@ -171,34 +184,37 @@
         icon: document.getElementById('icon').value || 'server'
       };
 
-      if (id) {
-        // PUT (Edit)
-        await fetch(`${API_URL}/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // POST (Add)
-        await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
+      await fetch(id ? `${API_URL}/${id}` : API_URL, {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
       resetForm();
       loadServicesTable();
     });
 
-    // Delete Service
     async function deleteService(id) {
       if (!confirm('Are you sure you want to delete this service?')) return;
       await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
       loadServicesTable();
     }
 
-    // Modal & Icon Engine
+    async function handleImport(input) {
+      if (!input.files || !input.files[0]) return;
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+
+      const res = await fetch('/api/import', { method: 'POST', body: formData });
+      if (res.ok) {
+        alert('Database restored successfully!');
+        loadServicesTable();
+      } else {
+        alert('Failed to import database file.');
+      }
+      input.value = '';
+    }
+
     async function loadLocalIcons() {
       if (LOCAL_ICONS.length > 0) return;
       const res = await fetch('/api/icons');
@@ -217,15 +233,14 @@
     function renderIconGrid() {
       const grid = document.getElementById('iconGrid');
       grid.innerHTML = '';
-      const slice = FILTERED_ICONS.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-      slice.forEach(filename => {
+      FILTERED_ICONS.forEach(filename => {
         const div = document.createElement('div');
         div.className = 'icon-option';
-        div.innerHTML = `<img src="${STATIC_ICON_PATH}${filename}" loading="lazy">`;
+        div.innerHTML = `<img src="${STATIC_ICON_PATH}${escapeHtml(filename)}" loading="lazy">`;
         div.onclick = () => {
           document.getElementById('icon').value = filename;
-          document.getElementById('selectedIconPreview').innerHTML = `<img src="${STATIC_ICON_PATH}${filename}" style="width:18px; height:18px; object-fit:contain;">`;
+          document.getElementById('selectedIconPreview').innerHTML = `<img src="${STATIC_ICON_PATH}${escapeHtml(filename)}" style="width:18px; height:18px; object-fit:contain;">`;
           closeIconModal();
         };
         grid.appendChild(div);
@@ -233,16 +248,11 @@
     }
 
     function filterIcons() {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        const q = document.getElementById('iconSearch').value.toLowerCase().trim();
-        FILTERED_ICONS = LOCAL_ICONS.filter(f => f.toLowerCase().includes(q));
-        currentPage = 1;
-        renderIconGrid();
-      }, 150);
+      const q = document.getElementById('iconSearch').value.toLowerCase().trim();
+      FILTERED_ICONS = LOCAL_ICONS.filter(f => f.toLowerCase().includes(q));
+      renderIconGrid();
     }
 
-    // Initial load
     loadServicesTable();
   </script>
 </body>
