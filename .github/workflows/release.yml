@@ -44,6 +44,9 @@ jobs:
       - name: Extract repository name in lowercase
         id: repo
         run: echo "NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
+      - name: Write VERSION file
+        run: echo "${{ github.event.inputs.version }}" > VERSION
 
       - name: Build and Push Docker Image
         id: build
