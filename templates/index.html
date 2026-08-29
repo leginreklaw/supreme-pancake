@@ -83,7 +83,14 @@
     <h1>Homelab Dashboard</h1>
     <a href="/settings" class="settings-link">⚙ Settings</a>
   </header>
-
+  <div id="version-badge">
+  v{{ running_version }}
+  {% if update_available %}
+    <a href="https://github.com/leginreklaw/supreme-pancake/releases/latest" title="Update available: v{{ latest_version }}">
+      🔔 Update available
+    </a>
+  {% endif %}
+  </div>
   <main id="dashboardContainer"></main>
 
   <script>
